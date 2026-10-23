@@ -1649,6 +1649,14 @@ class ProvRDFSerializer(Serializer):
         Raises:
             ValueError: If ``obj`` cannot be decoded to a usable value.
         """
+        if (
+            state.record_types[subj] == PROV_DERIVATION
+            and pred in (_prov_uri("hadGeneration"), _prov_uri("hadUsage"))
+            and isinstance(obj, BNode)
+        ):
+            # An anonymous reference cannot name a generation or usage in
+            # PROV-N; leave the optional formal attribute unspecified.
+            return
         obj1 = self.decode_rdf_representation(obj, graph)
         if obj is not None and obj1 is None:
             raise ValueError(("Error transforming", obj))

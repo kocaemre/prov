@@ -503,6 +503,35 @@ def test_decode_unrelated_provexception_is_not_relabelled_as_scruffy() -> None:
     assert message.startswith("Invalid Qualified Name:")
 
 
+@pytest.mark.parametrize("predicate", ["hadGeneration", "hadUsage"])
+def test_decode_derivation_ignores_dangling_blank_node_reference(
+    predicate: str,
+) -> None:
+    turtle = f"""
+    @prefix prov: <http://www.w3.org/ns/prov#> .
+    @prefix ex: <http://example.org/> .
+    ex:e2 a prov:Entity ;
+        prov:qualifiedDerivation [ a prov:Derivation ;
+                                   prov:entity ex:e1 ;
+                                   prov:{predicate} _:dangling ] .
+    ex:e1 a prov:Entity .
+    """
+    document = ProvDocument.deserialize(
+        content=turtle, format="rdf", rdf_format="turtle"
+    )
+    derivations = [
+        record
+        for record in document.get_records()
+        if record.get_type() == pm.PROV_DERIVATION
+    ]
+    assert len(derivations) == 1
+    assert all(
+        value is None
+        for name, value in derivations[0].formal_attributes
+        if name.localpart in {"generation", "usage"}
+    )
+
+
 def test_alternate_triple_follows_dm_argument_order() -> None:
     # #258: PROV-O maps alternateOf(alt1, alt2) to alt1 prov:alternateOf
     # alt2 (subject = first argument), matching the PROV-DM argument order.
